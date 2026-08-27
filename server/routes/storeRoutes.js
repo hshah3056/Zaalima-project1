@@ -9,7 +9,7 @@ const router = express.Router();
 // @desc    Get all multi-tenant stores
 router.get('/', async (req, res) => {
   try {
-    const stores = await Store.find({ isVerified: true });
+    const stores = await Store.find();
     res.status(200).json({ success: true, count: stores.length, data: stores });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -35,6 +35,27 @@ router.post('/', authMiddleware, authorizeRoles('vendor', 'admin'), async (req, 
 
     await store.save();
     res.status(201).json({ success: true, message: 'Store created successfully', data: store });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// @route   PUT /api/stores/:tenantId
+// @desc    Update store configuration details
+router.put('/:tenantId', authMiddleware, authorizeRoles('vendor', 'admin'), async (req, res) => {
+  try {
+    const { name, tagline, themeColor, bannerTitle, bannerSubtitle } = req.body;
+    const store = await Store.findOneAndUpdate(
+      { tenantId: req.params.tenantId },
+      { name, tagline, themeColor, bannerTitle, bannerSubtitle },
+      { new: true }
+    );
+
+    if (!store) {
+      return res.status(404).json({ success: false, message: 'Store not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Store updated successfully', data: store });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

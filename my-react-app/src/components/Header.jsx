@@ -153,18 +153,16 @@ export default function Header() {
               )}
             </button>
 
-            {/* User Account / Auth Status */}
+            {/* User Account / Auth Status & Vendor Dashboard Link */}
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <Link
                   to="/vendor/dashboard"
-                  className="text-left hidden sm:block hover:opacity-85 transition cursor-pointer"
+                  className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black px-2.5 py-1.5 rounded shadow transition-all uppercase tracking-wider"
                   title="Open Vendor Dashboard"
                 >
-                  <div className="text-[10px] text-yellow-200 flex items-center gap-1 font-bold uppercase">
-                    <ShieldCheck className="w-3 h-3" /> {role}
-                  </div>
-                  <div className="font-bold text-xs truncate max-w-[100px]">{user?.name}</div>
+                  <ShieldCheck className="w-3.5 h-3.5 fill-black" />
+                  <span className="hidden sm:inline">Vendor Dashboard</span>
                 </Link>
                 <button
                   onClick={() => dispatch(logout())}
@@ -175,16 +173,26 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => dispatch(setAuthModalOpen(true))}
-                className="flex items-center gap-1.5 text-xs hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded border border-white/30 transition-all font-semibold"
-              >
-                <User className="w-4 h-4" />
-                <div className="text-left">
-                  <div className="text-[9px] text-white/80 uppercase">Account</div>
-                  <div className="font-bold leading-none">Sign In</div>
-                </div>
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/vendor/dashboard"
+                  className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black px-2 py-1.5 rounded shadow transition-all uppercase tracking-wider text-[11px]"
+                  title="Open Vendor Portal"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 fill-black" />
+                  <span className="hidden md:inline">Vendor Portal</span>
+                </Link>
+                <button
+                  onClick={() => dispatch(setAuthModalOpen(true))}
+                  className="flex items-center gap-1.5 text-xs hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded border border-white/30 transition-all font-semibold"
+                >
+                  <User className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="text-[9px] text-white/80 uppercase">Account</div>
+                    <div className="font-bold leading-none">Sign In</div>
+                  </div>
+                </button>
+              </div>
             )}
 
           </div>

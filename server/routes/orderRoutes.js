@@ -15,11 +15,11 @@ router.post('/', tenantMiddleware, async (req, res) => {
     }
 
     const order = new Order({
-      tenantId: req.tenantId,
+      tenantId: req.tenantId || 'tenant-megastore',
       items,
       totalAmount,
       customerName: customerName || 'Customer',
-      customerEmail
+      customerEmail: customerEmail || 'customer@example.com'
     });
 
     await order.save();
@@ -33,8 +33,26 @@ router.post('/', tenantMiddleware, async (req, res) => {
 // @desc    Get tenant orders
 router.get('/', tenantMiddleware, async (req, res) => {
   try {
-    const orders = await Order.find({ tenantId: req.tenantId }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: orders.length, data: orders });
+    const filter = req.tenantId ? { tenantId: req.tenantId } : {};
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, count: orders.length, data: orders, orders });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// @route   PUT /api/orders/:id
+// @desc    Update order status (Pending, Processing, Shipped, Delivered, Cancelled)
+router.put('/:id', tenantMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Order status updated successfully', data: order });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
