@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { setTenantId } from '../store/tenantSlice';
 import { setSearchTerm, fetchProducts } from '../store/productSlice';
 import { toggleCartDrawer } from '../store/cartSlice';
@@ -155,15 +156,19 @@ export default function Header() {
             {/* User Account / Auth Status */}
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
-                <div className="text-left hidden sm:block">
+                <Link
+                  to="/vendor/dashboard"
+                  className="text-left hidden sm:block hover:opacity-85 transition cursor-pointer"
+                  title="Open Vendor Dashboard"
+                >
                   <div className="text-[10px] text-yellow-200 flex items-center gap-1 font-bold uppercase">
                     <ShieldCheck className="w-3 h-3" /> {role}
                   </div>
                   <div className="font-bold text-xs truncate max-w-[100px]">{user?.name}</div>
-                </div>
+                </Link>
                 <button
                   onClick={() => dispatch(logout())}
-                  className="p-1.5 bg-black/30 hover:bg-black/50 rounded text-white transition-colors"
+                  className="p-1.5 bg-black/30 hover:bg-black/50 rounded text-white transition-colors cursor-pointer"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
