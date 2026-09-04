@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { setTenantId } from '../store/tenantSlice';
 import { setSearchTerm, fetchProducts } from '../store/productSlice';
-import { toggleCartDrawer } from '../store/cartSlice';
 import { setAuthModalOpen, logout } from '../store/authSlice';
 import { Search, ShoppingCart, MapPin, Building2, User, ChevronDown, Store, LogOut, ShieldCheck } from 'lucide-react';
 
@@ -12,7 +11,7 @@ export default function Header() {
   const { activeTenantId, tenantsList } = useSelector((state) => state.tenant);
   const { searchTerm, selectedCategory } = useSelector((state) => state.products);
   const { items } = useSelector((state) => state.cart);
-  const { user, isAuthenticated, role } = useSelector((state) => state.auth);
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   const activeTenant = tenantsList.find((t) => t.tenantId === activeTenantId) || tenantsList[0];
   const [searchInput, setSearchInput] = useState(searchTerm);
@@ -52,12 +51,12 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Main mydeal Header Bar */}
+      {/* Main Header Bar */}
       <div className="bg-[#e40046] text-white py-3 px-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
 
-          {/* Logo & Tenant Brand */}
-          <div className="flex items-center gap-3">
+          {/* Logo & Tenant Brand (Clickable to Home) */}
+          <Link to="/" className="flex items-center gap-3 no-underline">
             <div className="flex flex-col">
               <span className="text-2xl font-black tracking-tight text-white italic font-serif flex items-center gap-1">
                 E-portal <span className="text-yellow-300 not-italic text-xs bg-black/20 px-1.5 py-0.5 rounded font-sans uppercase font-bold tracking-wider">Mydeal</span>
@@ -66,9 +65,9 @@ export default function Header() {
                 {activeTenant?.name || 'Mydeal Store'}
               </span>
             </div>
-          </div>
+          </Link>
 
-          {/* Search Bar with Category Dropdown */}
+          {/* Search Bar */}
           <form onSubmit={handleSearchSubmit} className="flex-1 max-w-2xl flex items-center bg-white rounded-sm overflow-hidden shadow-inner">
             <input
               type="text"
@@ -79,21 +78,22 @@ export default function Header() {
             />
             <button
               type="submit"
-              className="bg-[#2b2b2b] hover:bg-black text-white px-6 py-2.5 text-sm font-semibold flex items-center gap-1.5 transition-colors"
+              className="bg-[#2b2b2b] hover:bg-black text-white px-6 py-2.5 text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Search</span>
             </button>
           </form>
 
-          {/* Right Actions: Tenant Switcher, Cart, Account */}
+          {/* Right Actions: Tenant Switcher, Cart Link, Account */}
           <div className="flex items-center gap-5">
 
-            {/* Dynamic Multi-Tenant Switcher */}
+            {/* Multi-Tenant Switcher */}
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowTenantDropdown(!showTenantDropdown)}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-xs font-semibold border border-white/30 transition-all"
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-xs font-semibold border border-white/30 transition-all cursor-pointer"
                 title="Switch Multi-Tenant Database Store"
               >
                 <Building2 className="w-4 h-4 text-yellow-300" />
@@ -113,9 +113,11 @@ export default function Header() {
                   {tenantsList.map((tenant) => (
                     <button
                       key={tenant.tenantId}
+                      type="button"
                       onClick={() => handleTenantChange(tenant.tenantId)}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-red-50 transition-colors ${activeTenantId === tenant.tenantId ? 'bg-red-50 font-bold text-[#e40046] border-l-4 border-[#e40046]' : 'text-gray-700'
-                        }`}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-red-50 transition-colors cursor-pointer ${
+                        activeTenantId === tenant.tenantId ? 'bg-red-50 font-bold text-[#e40046] border-l-4 border-[#e40046]' : 'text-gray-700'
+                      }`}
                     >
                       <div>
                         <div className="font-semibold text-sm">{tenant.name}</div>
@@ -139,10 +141,11 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Cart Button */}
-            <button
-              onClick={() => dispatch(toggleCartDrawer())}
-              className="relative flex items-center gap-2 bg-white text-[#e40046] hover:bg-yellow-100 font-bold px-3.5 py-2 rounded-sm text-sm shadow transition-all"
+            {/* Dedicated Cart Page Link */}
+            <Link
+              to="/cart"
+              className="relative flex items-center gap-2 bg-white text-[#e40046] hover:bg-yellow-100 font-bold px-3.5 py-2 rounded-sm text-sm shadow transition-all no-underline"
+              title="View Shopping Cart"
             >
               <ShoppingCart className="w-5 h-5 text-[#e40046]" />
               <span className="hidden sm:inline">Cart</span>
@@ -151,7 +154,7 @@ export default function Header() {
                   {cartItemsCount}
                 </span>
               )}
-            </button>
+            </Link>
 
             {/* User Account / Auth Status & Vendor Dashboard Link */}
             {isAuthenticated ? (
@@ -165,6 +168,7 @@ export default function Header() {
                   <span className="hidden sm:inline">Vendor Dashboard</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={() => dispatch(logout())}
                   className="p-1.5 bg-black/30 hover:bg-black/50 rounded text-white transition-colors cursor-pointer"
                   title="Sign Out"
@@ -183,8 +187,9 @@ export default function Header() {
                   <span className="hidden md:inline">Vendor Portal</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={() => dispatch(setAuthModalOpen(true))}
-                  className="flex items-center gap-1.5 text-xs hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded border border-white/30 transition-all font-semibold"
+                  className="flex items-center gap-1.5 text-xs hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded border border-white/30 transition-all font-semibold cursor-pointer"
                 >
                   <User className="w-4 h-4" />
                   <div className="text-left">
