@@ -32,7 +32,7 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePlaceOrder = async (e) => {
+ const handlePlaceOrder = async (e) => {
     e.preventDefault();
     if (items.length === 0) {
       setErrorMsg('Your cart is empty.');
@@ -42,13 +42,35 @@ export default function CheckoutPage() {
     setLoading(true);
     setErrorMsg('');
 
-    // Mock order submission until Stripe is connected
-    setTimeout(() => {
-      dispatch(clearCart());
+    try {
+      // 1. Call your backend payment route
+      const response = await fetch('http://localhost:5001/api/payments/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': activeTenantId || '',
+        },
+        body: JSON.stringify({
+          items,
+          customerInfo: formData,
+          tenantId: activeTenantId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.url) {
+        // 2. Redirect the user directly to the official Stripe checkout page
+        window.location.href = data.url;
+      } else {
+        setErrorMsg(data.message || 'Payment initiation failed. Please check your Stripe keys.');
+      }
+    } catch (err) {
+      console.error('Payment checkout error:', err);
+      setErrorMsg('Failed to connect to backend server. Make sure port 5001 is running.');
+    } finally {
       setLoading(false);
-      alert('Order Placed Successfully (Test Mode)!');
-      navigate('/');
-    }, 1200);
+    }
   };
 
   if (items.length === 0) {
