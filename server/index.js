@@ -9,6 +9,7 @@ import storeRoutes from './routes/storeRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js'; // <--- 1. Imported paymentRoutes
 import { runSeed } from './seed.js';
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payments', paymentRoutes); // <--- 2. Mounted paymentRoutes
 
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -37,6 +39,7 @@ app.get('/', (req, res) => {
       stores: '/api/stores',
       products: '/api/products',
       orders: '/api/orders',
+      payments: '/api/payments',
       seed: '/api/seed (POST)'
     }
   });
