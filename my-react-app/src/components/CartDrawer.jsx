@@ -4,12 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { removeFromCart, updateQuantity, clearCart, setCartOpen } from '../store/cartSlice';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 
+import { setAuthModalOpen } from '../store/authSlice';
+
 export default function CartDrawer() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const { items, isCartOpen } = useSelector((state) => state.cart);
   const { activeTenantId, tenantsList } = useSelector((state) => state.tenant);
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const activeTenant = tenantsList.find((t) => t.tenantId === activeTenantId) || tenantsList[0];
 
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -25,6 +28,9 @@ export default function CartDrawer() {
   const handleProceedToCheckout = () => {
     if (items.length === 0) return;
     dispatch(setCartOpen(false));
+    if (!isAuthenticated || !localStorage.getItem('token')) {
+      dispatch(setAuthModalOpen(true));
+    }
     navigate('/checkout');
   };
 

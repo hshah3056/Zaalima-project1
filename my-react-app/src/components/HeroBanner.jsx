@@ -32,17 +32,17 @@ export default function HeroBanner() {
       }));
     }
 
-    // Fallback store tenant slides if database products loading
+    // Dynamic tenant store banner slide when database products loading
     return [
       {
-        id: 'fallback-1',
-        tagline: activeTenant?.name || 'Mydeal Store',
-        title: activeTenant?.bannerTitle || 'Mega Shopping Festival',
-        subtitle: activeTenant?.bannerSubtitle || 'Up to 80% OFF on Top Electronics, Fashion & Home',
-        badge: 'MEGA SALE • UP TO 80% OFF',
+        id: `tenant-banner-${activeTenant?.tenantId || 'dynamic'}`,
+        tagline: activeTenant?.name || 'Zaalima Store',
+        title: activeTenant?.bannerTitle || 'Welcome to Zaalima Store',
+        subtitle: activeTenant?.bannerSubtitle || activeTenant?.tagline || 'Explore top verified products across all categories',
+        badge: `${activeTenant?.name?.toUpperCase() || 'STORE'} • ACTIVE TENANT`,
         gradient: 'from-[#2b2b2b] via-[#3a0011] to-[#e40046]',
         image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80',
-        buttonText: 'Shop Now'
+        buttonText: 'Explore Catalog'
       }
     ];
   };

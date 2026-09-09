@@ -22,3 +22,21 @@ export const authMiddleware = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Authentication failed. Token invalid or expired.' });
   }
 };
+
+export const optionalAuthMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'zaalima_super_secret_jwt_key_2026');
+      const user = await User.findById(decoded.userId).select('-password');
+      if (user) {
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Ignore invalid/expired token errors in optional middleware
+  }
+  next();
+};
+

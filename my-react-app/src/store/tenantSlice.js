@@ -1,49 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-const DEFAULT_TENANTS = [
-  {
-    tenantId: 'tenant-megastore',
-    name: 'Mydeal MegaStore',
-    tagline: 'India’s Favorite Online Shopping Destination',
-    themeColor: '#e40046',
-    bannerTitle: 'Mega Shopping Festival',
-    bannerSubtitle: 'Up to 80% OFF on Top Electronics, Fashion & Home'
-  },
-  {
-    tenantId: 'tenant-fashion',
-    name: 'Zaalima Style & Fashion',
-    tagline: 'Trendy & Affordable Fashion For Everyone',
-    themeColor: '#d32f2f',
-    bannerTitle: 'New Fashion Season Collection',
-    bannerSubtitle: 'Flat 60% OFF on Ethnic Wear, Footwear & Accessories'
-  },
-  {
-    tenantId: 'tenant-techhub',
-    name: 'TechHub Electronics Store',
-    tagline: 'Next-Gen Gadgets & Smart Electronics',
-    themeColor: '#1976d2',
-    bannerTitle: 'Tech Revolution Sale',
-    bannerSubtitle: 'Exclusive Discounts on Laptops, Audio & Smartwatches'
-  }
-];
-
-// Fetch all available tenants dynamically from Express API with fallback
+// Fetch all available stores dynamically from Express API & MongoDB
 export const fetchTenants = createAsyncThunk('tenant/fetchTenants', async () => {
   try {
     const response = await fetch('http://127.0.0.1:5001/api/stores');
     const data = await response.json();
-    if (data.success && data.data && data.data.length > 0) {
+    if (data.success && Array.isArray(data.data)) {
       return data.data;
     }
   } catch (err) {
-    console.warn('Backend API server offline, loading default store list:', err.message);
+    console.warn('Backend API server offline:', err.message);
   }
-  return DEFAULT_TENANTS;
+  return [];
 });
 
 const initialState = {
   activeTenantId: localStorage.getItem('activeTenantId') || 'tenant-megastore',
-  tenantsList: DEFAULT_TENANTS,
+  tenantsList: [],
   loading: false,
   error: null
 };
@@ -64,13 +37,12 @@ const tenantSlice = createSlice({
       })
       .addCase(fetchTenants.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload && action.payload.length > 0) {
-          state.tenantsList = action.payload;
-        }
+        state.tenantsList = action.payload || [];
       })
       .addCase(fetchTenants.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
+        state.tenantsList = [];
       });
   }
 });

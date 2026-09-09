@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { clearCart } from '../store/cartSlice';
-import { ShieldCheck, ArrowLeft, CreditCard, Truck, X, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { setAuthModalOpen, logout } from '../store/authSlice';
+import { ShieldCheck, ArrowLeft, CreditCard, Truck, X, Lock, CheckCircle2, AlertCircle, User, LogIn, ShieldAlert } from 'lucide-react';
 
 export default function CheckoutPage() {
   const dispatch = useDispatch();
@@ -10,16 +11,29 @@ export default function CheckoutPage() {
 
   const { items } = useSelector((state) => state.cart);
   const { activeTenantId } = useSelector((state) => state.tenant);
+  const { user, isAuthenticated, role } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
+    fullName: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
+    city: 'New Delhi',
+    state: 'Delhi',
+    pincode: '110001',
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: prev.fullName || user.name || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || '',
+        address: prev.address || user.address || ''
+      }));
+    }
+  }, [user]);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,6 +57,18 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
+
+    const token = localStorage.getItem('token');
+    if (!isAuthenticated || !token || role !== 'customer') {
+      if (role && role !== 'customer') {
+        setErrorMsg(`Only Customer accounts can place shopping orders. You are signed in as '${role}'. Please sign in with a Customer account.`);
+      } else {
+        setErrorMsg('Please sign in with a Customer account to place your order.');
+      }
+      dispatch(setAuthModalOpen(true));
+      return;
+    }
+
     if (items.length === 0) {
       setErrorMsg('Your cart is empty.');
       return;
@@ -52,11 +78,12 @@ export default function CheckoutPage() {
     setErrorMsg('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/payments/create-checkout-session', {
+      const response = await fetch('http://127.0.0.1:5001/api/payments/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-tenant-id': activeTenantId || '',
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
           items,
@@ -77,7 +104,10 @@ export default function CheckoutPage() {
           setShowPaymentModal(true);
         }
       } else {
-        setErrorMsg(data.message || 'Payment initiation failed. Please check backend connection.');
+        setErrorMsg(data.message || 'Payment initiation failed. Only Customer accounts can place orders.');
+        if (response.status === 401 || response.status === 403) {
+          dispatch(setAuthModalOpen(true));
+        }
       }
     } catch (err) {
       console.error('Payment checkout error:', err);
@@ -122,6 +152,123 @@ export default function CheckoutPage() {
     );
   }
 
+  // GATE 1: Unauthenticated User - Prompt Customer Sign In
+  if (!isAuthenticated || !localStorage.getItem('token')) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden text-center p-8 space-y-6">
+          <div className="w-16 h-16 bg-rose-50 text-[#e40046] rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="bg-rose-100 text-[#e40046] text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider">
+              STEP 1: CUSTOMER SIGN IN REQUIRED
+            </span>
+            <h2 className="text-2xl font-black text-gray-900 mt-2">Sign In Required to Proceed</h2>
+            <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
+              Please sign in with your customer account before continuing to shipping details and payment options.
+            </p>
+          </div>
+
+          {/* Order Summary Teaser */}
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-left space-y-2 text-xs">
+            <div className="flex justify-between items-center font-bold text-gray-800">
+              <span>Cart Summary ({items.reduce((t, i) => t + i.quantity, 0)} Items)</span>
+              <span className="text-[#e40046] font-black text-sm">₹{grandTotal.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="text-[11px] text-gray-500 truncate">
+              {items.map((i) => i.name).join(', ')}
+            </div>
+          </div>
+
+          {/* Auth Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={() => dispatch(setAuthModalOpen(true))}
+              className="w-full sm:w-auto bg-[#e40046] hover:bg-[#c7003d] text-white font-extrabold px-8 py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" /> Sign In / Register Customer Account
+            </button>
+            
+            <Link
+              to="/cart"
+              className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-6 py-3.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors no-underline"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to Cart
+            </Link>
+          </div>
+
+          <div className="text-[11px] text-gray-400 flex items-center justify-center gap-1">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Secure checkout protected by Customer Authorization</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // GATE 2: Non-Customer Role (Vendor, Admin, Super Admin) - Block Checkout Next Step
+  if (role !== 'customer') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-white border border-amber-200 rounded-2xl shadow-xl overflow-hidden text-center p-8 space-y-6">
+          <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="bg-amber-100 text-amber-900 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider">
+              CUSTOMER ROLE REQUIRED
+            </span>
+            <h2 className="text-2xl font-black text-gray-900 mt-2">Customer Account Required to Place Order</h2>
+            <p className="text-xs text-gray-600 max-w-md mx-auto mt-1">
+              You are currently signed in as <strong className="uppercase text-amber-800">{role}</strong>. Shopping orders can only be placed by Customer accounts.
+            </p>
+          </div>
+
+          {/* Cart Summary */}
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-left space-y-2 text-xs">
+            <div className="flex justify-between items-center font-bold text-gray-800">
+              <span>Cart Total ({items.reduce((t, i) => t + i.quantity, 0)} Items)</span>
+              <span className="text-[#e40046] font-black text-sm">₹{grandTotal.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="text-[11px] text-gray-500 truncate">
+              {items.map((i) => i.name).join(', ')}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                dispatch(logout());
+                dispatch(setAuthModalOpen(true));
+              }}
+              className="w-full sm:w-auto bg-[#e40046] hover:bg-[#c7003d] text-white font-extrabold px-6 py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" /> Switch to Customer Account
+            </button>
+
+            <Link
+              to={role === 'superadmin' ? '/super-admin/dashboard' : '/vendor/dashboard'}
+              className="w-full sm:w-auto bg-gray-900 hover:bg-black text-white font-bold px-6 py-3.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors no-underline"
+            >
+              Go to {role === 'superadmin' ? 'Super Admin Portal' : 'Vendor Dashboard'}
+            </Link>
+          </div>
+
+          <div className="text-[11px] text-gray-400 flex items-center justify-center gap-1">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Strict Role-Based Order Protection Active</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 relative">
       <div className="mb-6">
@@ -138,9 +285,29 @@ export default function CheckoutPage() {
             <Truck className="w-4 h-4 text-[#e40046]" /> Shipping Details
           </h2>
 
+          {!isAuthenticated && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="font-extrabold block">Sign In Required</span>
+                  <span className="text-amber-700">You must be logged into your customer account to place an order.</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => dispatch(setAuthModalOpen(true))}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              >
+                <LogIn className="w-4 h-4" /> Sign In / Register
+              </button>
+            </div>
+          )}
+
           {errorMsg && (
-            <div className="bg-red-50 text-red-600 text-xs p-3 rounded">
-              {errorMsg}
+            <div className="bg-red-50 text-red-600 text-xs p-3 rounded flex items-center gap-2 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
             </div>
           )}
 

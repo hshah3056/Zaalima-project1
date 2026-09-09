@@ -1,6 +1,8 @@
 import express from 'express';
 import { Order } from '../models/Order.js';
+import { User } from '../models/User.js';
 import { tenantMiddleware } from '../middleware/tenantMiddleware.js';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddleware.js';
 import { sendOrderConfirmationEmail, sendTestEmail } from '../services/emailService.js';
 
 const router = express.Router();
@@ -22,9 +24,16 @@ router.post('/test-email', async (req, res) => {
 });
 
 // @route   POST /api/orders
-// @desc    Create a multi-tenant order
-router.post('/', tenantMiddleware, async (req, res) => {
+// @desc    Create a multi-tenant order (Requires Customer Role Only)
+router.post('/', authMiddleware, tenantMiddleware, async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({
+        success: false,
+        message: `Order Placement Failed: Only Customer accounts can place shopping orders. Your current role is '${req.user.role}'. Please sign in with a Customer account.`
+      });
+    }
+
     const { items, totalAmount, customerName, customerEmail, shippingAddress } = req.body;
 
     if (!items || items.length === 0) {
@@ -33,10 +42,17 @@ router.post('/', tenantMiddleware, async (req, res) => {
 
     const order = new Order({
       tenantId: req.tenantId || 'tenant-megastore',
-      items,
+      customer: req.user._id,
+      items: items.map(i => ({
+        productId: i._id || i.productId,
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity || 1,
+        image: i.image
+      })),
       totalAmount,
-      customerName: customerName || 'Customer',
-      customerEmail: customerEmail || 'customer@example.com',
+      customerName: customerName || req.user.name || 'Customer',
+      customerEmail: customerEmail || req.user.email || 'customer@example.com',
       shippingAddress: shippingAddress || 'Default Address'
     });
 
@@ -58,10 +74,27 @@ router.post('/', tenantMiddleware, async (req, res) => {
 });
 
 // @route   GET /api/orders
-// @desc    Get tenant orders
-router.get('/', tenantMiddleware, async (req, res) => {
+// @desc    Get orders (Filtered by customer if role === 'customer', or tenant for vendors/admins)
+router.get('/', optionalAuthMiddleware, tenantMiddleware, async (req, res) => {
   try {
-    const filter = req.tenantId ? { tenantId: req.tenantId } : {};
+    const filter = {};
+
+    if (req.tenantId) {
+      filter.tenantId = req.tenantId;
+    }
+
+    // If request comes from an authenticated customer, filter strictly for that customer's orders
+    if (req.user && req.user.role === 'customer') {
+      filter.$or = [
+        { customer: req.user._id },
+        { customerEmail: req.user.email }
+      ];
+    } else if (req.query.customerEmail) {
+      filter.customerEmail = req.query.customerEmail;
+    } else if (req.query.customerId) {
+      filter.customer = req.query.customerId;
+    }
+
     const orders = await Order.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: orders.length, data: orders, orders });
   } catch (error) {

@@ -48,4 +48,10 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound indexes for order status queries, customer history & revenue timelines
+orderSchema.index({ tenantId: 1, status: 1 });
+orderSchema.index({ customer: 1, createdAt: -1 });
+orderSchema.index({ customerEmail: 1 });
+orderSchema.index({ tenantId: 1, createdAt: -1 });
+
 export const Order = mongoose.model('Order', orderSchema);

@@ -14,6 +14,7 @@ const API_BASE = 'http://127.0.0.1:5001/api';
 export default function CustomerDashboard() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { activeTenantId } = useSelector((state) => state.tenant);
 
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'addresses' | 'profile'
   const [orders, setOrders] = useState([]);
@@ -63,6 +64,7 @@ export default function CustomerDashboard() {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_BASE}/orders`, {
         headers: {
+          'x-tenant-id': activeTenantId || 'tenant-megastore',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       });
@@ -80,7 +82,7 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     fetchCustomerOrders();
-  }, []);
+  }, [user, activeTenantId]);
 
   // Filter & Search Logic
   const filteredOrders = orders.filter((order) => {

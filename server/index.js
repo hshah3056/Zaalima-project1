@@ -11,6 +11,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import { notFoundHandler, errorHandler } from './middleware/errorMiddleware.js';
 import { runSeed } from './seed.js';
 
 dotenv.config();
@@ -58,19 +59,26 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'Backend API is running',
+    environment: process.env.NODE_ENV || 'development',
+    uptimeSeconds: Math.floor(process.uptime()),
+    memoryUsageMB: Math.round(process.memoryUsage().rss / (1024 * 1024)),
     database: states[dbState] || 'unknown'
   });
 });
 
 // Seed API endpoint
-app.post('/api/seed', async (req, res) => {
+app.post('/api/seed', async (req, res, next) => {
   try {
     await runSeed();
     res.status(200).json({ success: true, message: 'Database seeded successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    next(error);
   }
 });
+
+// Global Error Handling Middleware
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {

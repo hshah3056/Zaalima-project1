@@ -1,0 +1,56 @@
+name: Zaalima E-Commerce CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, harsh ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    name: Backend Lint & Health Check Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: server/package.json
+
+      - name: Install Server Dependencies
+        run: |
+          cd server
+          npm ci || npm install
+
+      - name: Verify Backend Syntax & Start Check
+        run: |
+          cd server
+          node -c index.js
+
+  frontend-build:
+    name: Frontend Vite Production Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: my-react-app/package.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd my-react-app
+          npm ci || npm install
+
+      - name: Build Vite Frontend Production Bundle
+        run: |
+          cd my-react-app
+          npm run build

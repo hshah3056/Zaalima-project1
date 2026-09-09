@@ -62,4 +62,7 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// Compound index for role-based user directory filtering & Super Admin listings
+userSchema.index({ role: 1, createdAt: -1 });
+
 export const User = mongoose.model('User', userSchema);

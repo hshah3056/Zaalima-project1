@@ -63,4 +63,9 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound indexes for multi-tenant query acceleration & search
+productSchema.index({ tenantId: 1, category: 1 });
+productSchema.index({ tenantId: 1, isDealOfTheDay: 1 });
+productSchema.index({ name: 'text', brand: 'text' });
+
 export const Product = mongoose.model('Product', productSchema);

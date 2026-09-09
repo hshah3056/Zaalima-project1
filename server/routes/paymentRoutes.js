@@ -1,7 +1,9 @@
 import express from 'express';
 import Stripe from 'stripe';
 import { Order } from '../models/Order.js';
+import { User } from '../models/User.js';
 import { sendOrderConfirmationEmail } from '../services/emailService.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -9,8 +11,17 @@ const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder';
 const isPlaceholderKey = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder';
 const stripe = new Stripe(stripeSecret);
 
-router.post('/create-checkout-session', async (req, res) => {
+// @route   POST /api/payments/create-checkout-session
+// @desc    Initiate checkout payment session (Requires Customer Role Only)
+router.post('/create-checkout-session', authMiddleware, async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({
+        success: false,
+        message: `Order Placement Failed: Only Customer accounts can place shopping orders. Your current role is '${req.user.role}'. Please sign in with a Customer account.`
+      });
+    }
+
     const { items, customerInfo, tenantId } = req.body;
 
     if (!items || items.length === 0) {
@@ -22,8 +33,8 @@ router.post('/create-checkout-session', async (req, res) => {
     const grandTotal = subtotal + deliveryCharge;
 
     const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const customerEmail = customerInfo?.email || 'customer@example.com';
-    const customerName = customerInfo?.fullName || 'Customer';
+    const customerEmail = customerInfo?.email || req.user.email;
+    const customerName = customerInfo?.fullName || req.user.name;
     const shippingAddress = `${customerInfo?.address || ''}, ${customerInfo?.city || ''}, ${customerInfo?.state || ''} - ${customerInfo?.pincode || ''}`;
 
     // If Stripe secret key is placeholder / not configured, perform a simulated checkout & create order immediately
@@ -34,12 +45,14 @@ router.post('/create-checkout-session', async (req, res) => {
 
       const newOrder = new Order({
         tenantId: tenantId || 'tenant-megastore',
+        customer: req.user._id,
         customerName: customerName,
         customerEmail: customerEmail,
         shippingAddress: `Ref: ${mockSessionId} | ${shippingAddress}`,
         totalAmount: grandTotal,
         status: 'completed',
         items: items.map(i => ({
+          productId: i._id || i.productId,
           name: i.name,
           price: i.price,
           quantity: i.quantity,
@@ -97,6 +110,7 @@ router.post('/create-checkout-session', async (req, res) => {
       customer_email: customerEmail,
       metadata: {
         tenantId: tenantId || 'tenant-megastore',
+        customerId: req.user._id.toString(),
         customerName: customerName,
         customerEmail: customerEmail,
         phone: customerInfo?.phone || '',
@@ -127,12 +141,14 @@ router.post('/create-checkout-session', async (req, res) => {
 
       const fallbackOrder = new Order({
         tenantId: tenantId || 'tenant-megastore',
+        customer: req.user?._id,
         customerName: customerName,
         customerEmail: customerEmail,
         shippingAddress: `Ref: ${mockSessionId} | ${customerInfo?.address || ''}`,
         totalAmount: grandTotal,
         status: 'completed',
         items: (items || []).map(i => ({
+          productId: i._id || i.productId,
           name: i.name,
           price: i.price,
           quantity: i.quantity,
@@ -172,6 +188,7 @@ router.get('/verify-session', async (req, res) => {
     let shippingAddress = 'Shipping Address Provided';
     let totalAmount = 0;
     let tenantId = 'tenant-megastore';
+    let customerId = null;
 
     if (stripeSecret && !isPlaceholderKey) {
       try {
@@ -184,6 +201,7 @@ router.get('/verify-session', async (req, res) => {
         shippingAddress = session.metadata?.address || 'Provided during Checkout';
         totalAmount = (session.amount_total || 0) / 100;
         tenantId = session.metadata?.tenantId || 'tenant-megastore';
+        customerId = session.metadata?.customerId || null;
       } catch (err) {
         console.warn('[Verify Session] Failed to fetch session from Stripe API:', err.message);
       }
@@ -193,8 +211,14 @@ router.get('/verify-session', async (req, res) => {
     let existingOrder = await Order.findOne({ shippingAddress: { $regex: session_id } });
 
     if (!existingOrder) {
+      if (!customerId && customerEmail) {
+        const foundUser = await User.findOne({ email: customerEmail.toLowerCase() });
+        if (foundUser) customerId = foundUser._id;
+      }
+
       existingOrder = new Order({
         tenantId,
+        customer: customerId || null,
         customerName,
         customerEmail,
         shippingAddress: `Ref: ${session_id} | ${shippingAddress}`,
