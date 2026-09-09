@@ -7,8 +7,12 @@ import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder';
-const isPlaceholderKey = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder';
+const rawStripeSecret = (process.env.STRIPE_SECRET_KEY || '').trim();
+const isPlaceholderKey = !rawStripeSecret ||
+  rawStripeSecret === 'sk_test_placeholder' ||
+  rawStripeSecret.includes('your_stripe_secret_key') ||
+  rawStripeSecret.includes('xxxxxxxx');
+const stripeSecret = isPlaceholderKey ? 'sk_test_placeholder' : rawStripeSecret;
 const stripe = new Stripe(stripeSecret);
 
 // @route   POST /api/payments/create-checkout-session

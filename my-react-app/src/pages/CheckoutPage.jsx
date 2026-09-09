@@ -38,15 +38,6 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Payment Modal State for Development/Simulation Mode
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentSession, setPaymentSession] = useState(null);
-  const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
-  const [cardExpiry, setCardExpiry] = useState('12/28');
-  const [cardCvc, setCardCvc] = useState('123');
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [modalError, setModalError] = useState('');
-
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
   const deliveryCharge = subtotal > 0 && subtotal < 500 ? 49 : 0;
   const grandTotal = subtotal + deliveryCharge;
@@ -95,14 +86,8 @@ export default function CheckoutPage() {
       const data = await response.json();
 
       if (data.success && data.url) {
-        if (data.url.includes('checkout.stripe.com')) {
-          // Live Stripe Checkout URL
-          window.location.href = data.url;
-        } else {
-          // Open interactive Payment Gateway Modal for Dev Mode
-          setPaymentSession(data);
-          setShowPaymentModal(true);
-        }
+        // Direct seamless redirect to official Stripe Checkout session
+        window.location.href = data.url;
       } else {
         setErrorMsg(data.message || 'Payment initiation failed. Only Customer accounts can place orders.');
         if (response.status === 401 || response.status === 403) {
@@ -115,26 +100,6 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleConfirmModalPayment = () => {
-    if (cardNumber.endsWith('4000')) {
-      setModalError('Your card was declined. Please try another test card (e.g. 4242 4242 4242 4242).');
-      return;
-    }
-
-    setProcessingPayment(true);
-    setModalError('');
-
-    setTimeout(() => {
-      setProcessingPayment(false);
-      setShowPaymentModal(false);
-      if (paymentSession?.url) {
-        window.location.href = paymentSession.url;
-      } else {
-        navigate('/order-success');
-      }
-    }, 1500);
   };
 
   if (items.length === 0) {
@@ -463,141 +428,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-
-      {/* STRIPE DEVELOPMENT PAYMENT WINDOW MODAL */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-100">
-            
-            {/* Modal Header */}
-            <div className="bg-[#635bff] text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm">
-                  S
-                </div>
-                <div>
-                  <h3 className="font-black text-sm tracking-wide">Stripe Payment Gateway</h3>
-                  <p className="text-[10px] text-white/80 uppercase tracking-widest font-semibold">TEST DEVELOPMENT MODE</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
-              <div className="bg-purple-50 border border-purple-100 p-3 rounded-lg flex items-center justify-between text-xs">
-                <div>
-                  <p className="text-purple-700 font-semibold">{formData.fullName || 'Customer'}</p>
-                  <p className="text-purple-500 text-[11px]">{formData.email || 'customer@example.com'}</p>
-                </div>
-                <div className="text-right">
-                  <span className="block text-[10px] text-purple-600 font-bold uppercase">Payable Total</span>
-                  <span className="text-base font-black text-purple-900">₹{grandTotal.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              {modalError && (
-                <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg flex items-center gap-2 border border-red-100">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{modalError}</span>
-                </div>
-              )}
-
-              {/* Credit Card Form Controls */}
-              <div className="space-y-3 pt-1">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex justify-between">
-                    <span>Card Number (Test Card)</span>
-                    <span className="text-purple-600 cursor-pointer" onClick={() => setCardNumber('4242 4242 4242 4242')}>Use 4242...</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="4242 4242 4242 4242"
-                      className="w-full px-3 py-2.5 text-xs font-mono border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#635bff] outline-none pl-9"
-                    />
-                    <CreditCard className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Expiration</label>
-                    <input
-                      type="text"
-                      value={cardExpiry}
-                      onChange={(e) => setCardExpiry(e.target.value)}
-                      placeholder="MM/YY"
-                      className="w-full px-3 py-2 text-xs font-mono border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#635bff] outline-none text-center"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">CVC / CVV</label>
-                    <input
-                      type="text"
-                      value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value)}
-                      placeholder="123"
-                      className="w-full px-3 py-2 text-xs font-mono border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#635bff] outline-none text-center"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dev Test Options */}
-              <div className="pt-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Test Outcome Simulation</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCardNumber('4242 4242 4242 4242')}
-                    className={`py-1.5 px-2 text-[11px] font-semibold rounded border transition-colors ${
-                      !cardNumber.endsWith('4000') ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-600'
-                    }`}
-                  >
-                    ✓ Simulate Success
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCardNumber('4000 0000 0000 4000')}
-                    className={`py-1.5 px-2 text-[11px] font-semibold rounded border transition-colors ${
-                      cardNumber.endsWith('4000') ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-50 border-gray-200 text-gray-600'
-                    }`}
-                  >
-                    ✕ Simulate Decline
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={handleConfirmModalPayment}
-                  disabled={processingPayment}
-                  className="w-full bg-[#635bff] hover:bg-[#534be0] text-white py-3 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  {processingPayment ? 'Processing Payment...' : `Pay ₹${grandTotal.toLocaleString('en-IN')} Now`}
-                </button>
-              </div>
-
-              <div className="text-center text-[10px] text-gray-400 flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Simulated 256-bit SSL Stripe Test Gateway</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
     </div>
   );
 }
