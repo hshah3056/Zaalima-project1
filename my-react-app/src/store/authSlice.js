@@ -43,6 +43,30 @@ export const registerUser = createAsyncThunk(
   }
 );
 
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateUserProfile',
+  async ({ name, phone, address }, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().auth.token || localStorage.getItem('token');
+      const response = await fetch('http://127.0.0.1:5001/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ name, phone, address })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        return rejectWithValue(data.message || 'Failed to update profile');
+      }
+      return data.data;
+    } catch (err) {
+      return rejectWithValue(err.message || 'Network error updating profile');
+    }
+  }
+);
+
 const initialState = {
   user,
   token,
@@ -112,6 +136,20 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Registration failed';
+      })
+      // Profile Update
+      .addCase(updateUserProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = { ...state.user, ...action.payload };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to update profile';
       });
   }
 });

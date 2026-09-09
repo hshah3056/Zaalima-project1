@@ -11,7 +11,7 @@ export default function Header() {
   const { activeTenantId, tenantsList } = useSelector((state) => state.tenant);
   const { searchTerm, selectedCategory } = useSelector((state) => state.products);
   const { items } = useSelector((state) => state.cart);
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   const activeTenant = tenantsList.find((t) => t.tenantId === activeTenantId) || tenantsList[0];
   const [searchInput, setSearchInput] = useState(searchTerm);
@@ -30,6 +30,23 @@ export default function Header() {
     setShowTenantDropdown(false);
     dispatch(fetchProducts({ tenantId, category: 'All', search: '' }));
   };
+
+  // Helper to determine dashboard path & button label based on logged in user role
+  const getRoleDashboardConfig = (role) => {
+    switch (role) {
+      case 'superadmin':
+        return { path: '/super-admin/dashboard', label: 'Super Admin Portal', bg: 'bg-black text-yellow-300 border border-yellow-400/40' };
+      case 'admin':
+        return { path: '/admin/dashboard', label: 'Admin Control Panel', bg: 'bg-purple-700 text-white border border-purple-400' };
+      case 'vendor':
+        return { path: '/vendor/dashboard', label: 'Vendor Dashboard', bg: 'bg-yellow-400 text-black font-black' };
+      case 'customer':
+      default:
+        return { path: '/customer/dashboard', label: 'My Customer Account', bg: 'bg-emerald-600 text-white' };
+    }
+  };
+
+  const roleConfig = user ? getRoleDashboardConfig(user.role) : null;
 
   return (
     <header className="sticky top-0 z-50 shadow-md">
@@ -115,9 +132,8 @@ export default function Header() {
                       key={tenant.tenantId}
                       type="button"
                       onClick={() => handleTenantChange(tenant.tenantId)}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-red-50 transition-colors cursor-pointer ${
-                        activeTenantId === tenant.tenantId ? 'bg-red-50 font-bold text-[#e40046] border-l-4 border-[#e40046]' : 'text-gray-700'
-                      }`}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-red-50 transition-colors cursor-pointer ${activeTenantId === tenant.tenantId ? 'bg-red-50 font-bold text-[#e40046] border-l-4 border-[#e40046]' : 'text-gray-700'
+                        }`}
                     >
                       <div>
                         <div className="font-semibold text-sm">{tenant.name}</div>
@@ -156,17 +172,23 @@ export default function Header() {
               )}
             </Link>
 
-            {/* User Account / Auth Status & Vendor Dashboard Link */}
+            {/* User Account / Auth Status & Dynamic Role Dashboard Links */}
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
-                <Link
-                  to="/vendor/dashboard"
-                  className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black px-2.5 py-1.5 rounded shadow transition-all uppercase tracking-wider"
-                  title="Open Vendor Dashboard"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 fill-black" />
-                  <span className="hidden sm:inline">Vendor Dashboard</span>
-                </Link>
+                {roleConfig && (
+                  <Link
+                    to={roleConfig.path}
+                    className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded shadow transition-all uppercase tracking-wider no-underline ${roleConfig.bg}`}
+                    title={`Open ${roleConfig.label}`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{roleConfig.label}</span>
+                  </Link>
+                )}
+                <div className="hidden md:flex flex-col text-right text-xs">
+                  <span className="font-bold truncate max-w-[100px]">{user?.name || 'User'}</span>
+                  <span className="text-[10px] uppercase font-bold text-yellow-200">{user?.role}</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => dispatch(logout())}
@@ -178,14 +200,6 @@ export default function Header() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link
-                  to="/vendor/dashboard"
-                  className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black px-2 py-1.5 rounded shadow transition-all uppercase tracking-wider text-[11px]"
-                  title="Open Vendor Portal"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 fill-black" />
-                  <span className="hidden md:inline">Vendor Portal</span>
-                </Link>
                 <button
                   type="button"
                   onClick={() => dispatch(setAuthModalOpen(true))}

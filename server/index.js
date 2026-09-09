@@ -9,13 +9,18 @@ import storeRoutes from './routes/storeRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
-import paymentRoutes from './routes/paymentRoutes.js'; // <--- 1. Imported paymentRoutes
+import paymentRoutes from './routes/paymentRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import { runSeed } from './seed.js';
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
+
+// Stripe Webhook requires raw request body for signature verification
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -28,7 +33,9 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
-app.use('/api/payments', paymentRoutes); // <--- 2. Mounted paymentRoutes
+app.use('/api/payments', paymentRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
 
 app.get('/', (req, res) => {
   res.status(200).json({

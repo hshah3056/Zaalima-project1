@@ -17,8 +17,8 @@ router.get('/', async (req, res) => {
 });
 
 // @route   POST /api/stores
-// @desc    Create a new store (Vendors & Admins only - RBAC protected)
-router.post('/', authMiddleware, authorizeRoles('vendor', 'admin'), async (req, res) => {
+// @desc    Create a new store (Super Admin, Vendors & Admins - RBAC protected)
+router.post('/', authMiddleware, authorizeRoles('superadmin', 'vendor', 'admin'), async (req, res) => {
   try {
     const { name, tagline, themeColor, bannerTitle, bannerSubtitle } = req.body;
 
@@ -26,10 +26,10 @@ router.post('/', authMiddleware, authorizeRoles('vendor', 'admin'), async (req, 
     const store = new Store({
       tenantId,
       name,
-      tagline,
-      themeColor,
-      bannerTitle,
-      bannerSubtitle,
+      tagline: tagline || 'Official Brand Store',
+      themeColor: themeColor || '#e40046',
+      bannerTitle: bannerTitle || 'Mega Festival Sale',
+      bannerSubtitle: bannerSubtitle || 'Up to 80% OFF on Top Verified Products',
       owner: req.user._id
     });
 
@@ -42,7 +42,7 @@ router.post('/', authMiddleware, authorizeRoles('vendor', 'admin'), async (req, 
 
 // @route   PUT /api/stores/:tenantId
 // @desc    Update store configuration details
-router.put('/:tenantId', authMiddleware, authorizeRoles('vendor', 'admin'), async (req, res) => {
+router.put('/:tenantId', authMiddleware, authorizeRoles('superadmin', 'vendor', 'admin'), async (req, res) => {
   try {
     const { name, tagline, themeColor, bannerTitle, bannerSubtitle } = req.body;
     const store = await Store.findOneAndUpdate(
@@ -56,6 +56,20 @@ router.put('/:tenantId', authMiddleware, authorizeRoles('vendor', 'admin'), asyn
     }
 
     res.status(200).json({ success: true, message: 'Store updated successfully', data: store });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// @route   DELETE /api/stores/:tenantId
+// @desc    Delete a store tenant (Super Admin only)
+router.delete('/:tenantId', authMiddleware, authorizeRoles('superadmin'), async (req, res) => {
+  try {
+    const store = await Store.findOneAndDelete({ tenantId: req.params.tenantId });
+    if (!store) {
+      return res.status(404).json({ success: false, message: 'Store not found' });
+    }
+    res.status(200).json({ success: true, message: 'Store tenant deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { setAuthModalOpen, loginUser, registerUser, clearError } from '../store/authSlice';
-import { X, Lock, Mail, User, Store, ShieldCheck, LogIn, UserPlus } from 'lucide-react';
+import { X, Lock, Mail, User, Store, ShieldCheck, LogIn, UserPlus, Key, Shield } from 'lucide-react';
 
 export default function AuthModal() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const { isAuthModalOpen, loading, error } = useSelector((state) => state.auth);
 
   const [mode, setMode] = useState('login'); // 'login' | 'register'
-  const [role, setRole] = useState('customer'); // 'customer' | 'vendor'
+  const [role, setRole] = useState('customer'); // 'customer' | 'vendor' | 'admin' | 'superadmin'
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
-    password: '',
+    email: 'customer@zaalima.com',
+    password: 'password123',
     storeName: ''
   });
 
@@ -28,12 +31,27 @@ export default function AuthModal() {
     dispatch(clearError());
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (mode === 'login') {
-      dispatch(loginUser({ email: formData.email, password: formData.password }));
+  const handleQuickDemoFill = (selectedRole) => {
+    setRole(selectedRole);
+    if (selectedRole === 'superadmin') {
+      setFormData({ name: 'Platform Super Admin', email: 'superadmin@zaalima.com', password: 'password123', storeName: '' });
+    } else if (selectedRole === 'admin') {
+      setFormData({ name: 'System Admin', email: 'admin@zaalima.com', password: 'password123', storeName: '' });
+    } else if (selectedRole === 'vendor') {
+      setFormData({ name: 'Vendor Partner', email: 'vendor@zaalima.com', password: 'password123', storeName: 'Shah Electronics' });
     } else {
-      dispatch(
+      setFormData({ name: 'Customer Account', email: 'customer@zaalima.com', password: 'password123', storeName: '' });
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    let action;
+    if (mode === 'login') {
+      action = await dispatch(loginUser({ email: formData.email, password: formData.password }));
+    } else {
+      action = await dispatch(
         registerUser({
           name: formData.name,
           email: formData.email,
@@ -43,34 +61,47 @@ export default function AuthModal() {
         })
       );
     }
+
+    if (action.meta.requestStatus === 'fulfilled') {
+      const userRole = action.payload.user?.role || role;
+      if (userRole === 'superadmin') {
+        navigate('/super-admin/dashboard');
+      } else if (userRole === 'vendor' || userRole === 'admin') {
+        navigate('/vendor/dashboard');
+      } else {
+        navigate('/customer/dashboard');
+      }
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 relative">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150 font-sans">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 relative">
         
         {/* Header */}
-        <div className="bg-[#e40046] text-white p-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-yellow-300" />
+        <div className="bg-[#111827] text-white p-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#e40046] flex items-center justify-center font-bold text-white text-sm shadow">
+              Z
+            </div>
             <div>
-              <h3 className="font-extrabold text-base tracking-tight">Account Sign In</h3>
-              <p className="text-[11px] text-white/80">Access your store orders & account</p>
+              <h3 className="font-black text-sm tracking-wide">Role-Based Account Authentication</h3>
+              <p className="text-[10px] text-gray-400">Customer, Vendor, Admin & Super Admin Access</p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer text-gray-400 hover:text-white"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Tab Switcher (Login vs Register) */}
         <div className="flex border-b border-gray-200 bg-gray-50 text-xs font-bold">
           <button
             onClick={() => handleModeSwitch('login')}
-            className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
+            className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
               mode === 'login'
                 ? 'bg-white text-[#e40046] border-b-2 border-[#e40046]'
                 : 'text-gray-500 hover:text-gray-800'
@@ -80,7 +111,7 @@ export default function AuthModal() {
           </button>
           <button
             onClick={() => handleModeSwitch('register')}
-            className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
+            className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
               mode === 'register'
                 ? 'bg-white text-[#e40046] border-b-2 border-[#e40046]'
                 : 'text-gray-500 hover:text-gray-800'
@@ -95,43 +126,57 @@ export default function AuthModal() {
           
           {/* Error Banner */}
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 rounded border border-red-200 text-xs font-semibold">
+            <div className="p-3 bg-red-50 text-red-600 rounded-lg border border-red-200 text-xs font-semibold">
               {error}
             </div>
           )}
 
-          {/* Registration Role Selector */}
-          {mode === 'register' && (
-            <div>
-              <label className="block text-gray-700 font-bold mb-1.5 uppercase text-[10px]">Select Account Role</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRole('customer')}
-                  className={`p-2.5 rounded border text-center font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    role === 'customer'
-                      ? 'bg-red-50 border-[#e40046] text-[#e40046]'
-                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <User className="w-4 h-4" /> Customer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('vendor')}
-                  className={`p-2.5 rounded border text-center font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    role === 'vendor'
-                      ? 'bg-red-50 border-[#e40046] text-[#e40046]'
-                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Store className="w-4 h-4 text-blue-600" /> Vendor Partner
-                </button>
-              </div>
+          {/* Quick Demo Role Selector Buttons */}
+          <div>
+            <label className="block text-gray-700 font-bold mb-1.5 uppercase text-[10px] tracking-wider">
+              1-Click Select Demo Role Credentials:
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('customer')}
+                className={`py-2 px-1 rounded border text-center transition-all cursor-pointer ${
+                  role === 'customer' ? 'bg-rose-50 border-[#e40046] text-[#e40046]' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                👤 Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('vendor')}
+                className={`py-2 px-1 rounded border text-center transition-all cursor-pointer ${
+                  role === 'vendor' ? 'bg-amber-50 border-amber-500 text-amber-800' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                🏪 Vendor
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('admin')}
+                className={`py-2 px-1 rounded border text-center transition-all cursor-pointer ${
+                  role === 'admin' ? 'bg-blue-50 border-blue-500 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                🛡️ Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('superadmin')}
+                className={`py-2 px-1 rounded border text-center transition-all cursor-pointer ${
+                  role === 'superadmin' ? 'bg-purple-50 border-purple-600 text-purple-900' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                👑 SuperAdmin
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* Name Field (Register mode) */}
+          {/* Registration Full Name */}
           {mode === 'register' && (
             <div>
               <label className="block text-gray-700 font-bold mb-1">Full Name</label>
@@ -140,7 +185,7 @@ export default function AuthModal() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Harsh Shah"
+                  placeholder="Full Name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#e40046]"
@@ -149,7 +194,7 @@ export default function AuthModal() {
             </div>
           )}
 
-          {/* Store Name Field (Vendor Register mode) */}
+          {/* Store Name for Vendor Registration */}
           {mode === 'register' && role === 'vendor' && (
             <div>
               <label className="block text-gray-700 font-bold mb-1">Store / Brand Name</label>
@@ -178,7 +223,7 @@ export default function AuthModal() {
                 placeholder="name@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#e40046]"
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#e40046] font-mono text-xs"
               />
             </div>
           </div>
@@ -194,29 +239,22 @@ export default function AuthModal() {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#e40046]"
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#e40046] font-mono text-xs"
               />
             </div>
-          </div>
-
-          {/* Quick Demo Credentials Info */}
-          <div className="p-2.5 bg-yellow-50 rounded border border-yellow-200 text-[11px] text-yellow-800 space-y-0.5">
-            <div className="font-bold">🔑 Test Demo Accounts:</div>
-            <div>• Customer: <code>customer@example.com</code> / <code>password123</code></div>
-            <div>• Vendor: <code>vendor@example.com</code> / <code>password123</code></div>
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#e40046] hover:bg-[#c7003d] text-white py-2.5 rounded font-bold text-xs uppercase tracking-wider shadow transition-all disabled:opacity-50"
+            className="w-full bg-[#111827] hover:bg-black text-white py-3 rounded-lg font-bold text-xs uppercase tracking-wider shadow transition-all cursor-pointer disabled:opacity-50"
           >
             {loading
-              ? 'Authenticating...'
+              ? 'Authenticating Role Account...'
               : mode === 'login'
-              ? 'Sign In'
-              : `Create ${role === 'vendor' ? 'Vendor' : 'Customer'} Account`}
+              ? `Sign In as ${role.toUpperCase()}`
+              : `Create ${role.toUpperCase()} Account`}
           </button>
         </form>
 

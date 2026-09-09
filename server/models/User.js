@@ -22,19 +22,35 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['customer', 'vendor', 'admin'],
+      enum: ['customer', 'vendor', 'admin', 'superadmin'],
       default: 'customer'
+    },
+    permissions: {
+      type: [String],
+      default: ['manage_products', 'manage_orders', 'view_analytics']
     },
     storeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Store',
       default: null
+    },
+    tenantId: {
+      type: String,
+      default: 'tenant-megastore'
+    },
+    phone: {
+      type: String,
+      default: '+91 9876543210'
+    },
+    address: {
+      type: String,
+      default: 'Connaught Place, Central Delhi, New Delhi - 110001'
     }
   },
   { timestamps: true }
 );
 
-// Hash password before saving (Async hook for Mongoose 8/9)
+// Hash password before saving
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   const salt = await bcrypt.genSalt(10);
